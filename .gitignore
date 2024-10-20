@@ -1,0 +1,6 @@
+# Ignore binary files and build intermediates
+Binaries/
+Build/
+Intermediate/
+DerivedDataCache/
+Saved/
