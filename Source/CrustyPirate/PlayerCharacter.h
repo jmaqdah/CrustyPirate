@@ -16,6 +16,8 @@
 
 #include "PaperZDAnimInstance.h"
 
+#include "Components/BoxComponent.h"
+
 #include "PlayerCharacter.generated.h"
 
 /**
@@ -33,6 +35,9 @@ public:
     
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
     UCameraComponent* Camera;
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+    UBoxComponent* AttackCollisionBox;
     
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     UInputMappingContext* InputMappingContext;
@@ -73,5 +78,11 @@ public:
     void UpdateDirection(float MoveDirection);
     
     void OnAttackOverrideAnimEnd(bool Completed);
+    
+    UFUNCTION()
+    void AttackBoxOverlapBegin(UPrimitiveComponent* OverlapComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+    
+    UFUNCTION(BlueprintCallable)
+    void EnableAttackCollisionBox(bool Enabled);
 	
 };

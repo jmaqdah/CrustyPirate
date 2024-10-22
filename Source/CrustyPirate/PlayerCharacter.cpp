@@ -3,6 +3,8 @@
 
 #include "PlayerCharacter.h"
 
+#include "Enemy.h"
+
 APlayerCharacter::APlayerCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
@@ -11,9 +13,11 @@ APlayerCharacter::APlayerCharacter()
     // Note that the RootComponent is already set up for us since we inherit from APaperZDCharacter
     SpringArm->SetupAttachment(RootComponent);
     
-    
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+    
+    AttackCollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackCollisionBox"));
+    AttackCollisionBox->SetupAttachment(RootComponent);
     
 }
 
@@ -30,7 +34,14 @@ void APlayerCharacter::BeginPlay()
         }
     }
     
+    // Binding the attack animation end delegate (signal) to OnAttackOverrideAnimEnd()
     OnAttackOverrideEndDelegate.BindUObject(this, &APlayerCharacter::OnAttackOverrideAnimEnd);
+    
+    // Binding the collision box's OnComponentBeginOverlap event to AttackBoxOverlapBegin()
+    AttackCollisionBox->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacter::AttackBoxOverlapBegin);
+    
+    // Disbale the collision box at first
+    EnableAttackCollisionBox(false);
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
@@ -117,6 +128,9 @@ void APlayerCharacter::Attack(const FInputActionValue& Value)
         CanAttack = false;
         CanMove = false;
         
+        // Enable the collision box
+        EnableAttackCollisionBox(true);
+        
         // Override the current animation sequence with AttackAnimSequence when the player is attacking
         // Once the animation is over, the OnAttackOverrideEndDelegate will be actioned and OnAttackOverrideAnimEnd will be called
         GetAnimInstance()->PlayAnimationOverride(AttackAnimSequence, FName("DefaultSlot"), 1.0f, 0.0f, OnAttackOverrideEndDelegate);
@@ -127,4 +141,39 @@ void APlayerCharacter::OnAttackOverrideAnimEnd(bool Completed)
 {
     CanAttack = true;
     CanMove = true;
+    
+    // Disable the collision box
+    EnableAttackCollisionBox(false);
+}
+
+void APlayerCharacter::AttackBoxOverlapBegin(UPrimitiveComponent* OverlapComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    // Check if the actor in the collision box is an enemy actor
+    AEnemy* Enemy = Cast<AEnemy>(OtherActor);
+    
+    if (Enemy)
+    {
+        // Enemy->TakeDamage();
+        GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::White, Enemy->GetName());
+    }
+    
+    
+}
+
+void APlayerCharacter::EnableAttackCollisionBox(bool Enabled)
+{
+    if (Enabled)
+    {
+        // Enable the collision box
+        AttackCollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        // Setting the collision response to the pawn to be overalp
+        AttackCollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+    }
+    else
+    {
+        // Disable the collision box
+        AttackCollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        // Setting the collision response to the pawn to be ignore
+        AttackCollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+    }
 }
