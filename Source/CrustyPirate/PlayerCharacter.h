@@ -14,6 +14,8 @@
 #include "InputActionValue.h"
 #include "GameFramework/Controller.h"
 
+#include "PaperZDAnimInstance.h"
+
 #include "PlayerCharacter.generated.h"
 
 /**
@@ -44,11 +46,19 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     UInputAction* AttackAction;
     
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPaperZDAnimSequence* AttackAnimSequence;
+    
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     bool IsAlive = true;
     
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     bool CanMove = true;
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    bool CanAttack = true;
+    
+    FZDOnAnimationOverrideEndSignature OnAttackOverrideEndDelegate;
     
     APlayerCharacter();
     virtual void BeginPlay() override;
@@ -61,5 +71,7 @@ public:
     void Attack(const FInputActionValue& Value);
     
     void UpdateDirection(float MoveDirection);
+    
+    void OnAttackOverrideAnimEnd(bool Completed);
 	
 };

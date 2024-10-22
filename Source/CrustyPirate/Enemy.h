@@ -45,4 +45,7 @@ public:
     UFUNCTION()
     void DetectorOverlapEnd(UPrimitiveComponent* OverlapComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
     
+    bool ShouldMoveToTarget();
+    void UpdateDirection(float MoveDirection);
+    
 };
