@@ -14,6 +14,9 @@ AEnemy::AEnemy()
     
     HPText = CreateDefaultSubobject<UTextRenderComponent>(TEXT("HPText"));
     HPText->SetupAttachment(RootComponent);
+    
+    AttackCollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackCollisionBox"));
+    AttackCollisionBox->SetupAttachment(RootComponent);
 }
 
 void AEnemy::BeginPlay()
@@ -25,6 +28,15 @@ void AEnemy::BeginPlay()
     PlayerDetectorSphere->OnComponentEndOverlap.AddDynamic(this, &AEnemy::DetectorOverlapEnd);
     
     UpdateHP(HitPoints);
+    
+    // Binding the attack animation end delegate (signal) to OnAttackOverrideAnimEnd()
+    OnAttackOverrideEndDelegate.BindUObject(this, &AEnemy::OnAttackOverrideAnimEnd);
+    
+    // Binding the collision box's OnComponentBeginOverlap event to AttackBoxOverlapBegin()
+    AttackCollisionBox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::AttackBoxOverlapBegin);
+    
+    // Disable the collision box at first
+    EnableAttackCollisionBox(false);
 }
 
 void AEnemy::Tick(float DeltaTime)
@@ -52,6 +64,10 @@ void AEnemy::Tick(float DeltaTime)
         else
         {
             // Attack
+            if (FollowTarget->IsAlive)
+            {
+                Attack();
+            }
         }
     }
 }
@@ -131,6 +147,10 @@ void AEnemy::TakeHit(int DamageAmount, float StunDuration)
 {
     if (!IsAlive) return;
     
+    // Stun the enemy (This makes sure the override animations (such as the attack one) is stopped in case
+    // the enemy was attacking while the player attacks)
+    Stun(StunDuration);
+    
     UpdateHP(HitPoints - DamageAmount);
     
     if (HitPoints <= 0)
@@ -140,15 +160,17 @@ void AEnemy::TakeHit(int DamageAmount, float StunDuration)
         HPText->SetHiddenInGame(true);
         IsAlive = false;
         CanMove = false;
+        CanAttack = false;
         
         // Play the die animation by jumpting to the JumpDie animation
         GetAnimInstance()->JumpToNode(FName("JumpDie"), FName("CrabbyStateMachine"));
+        
+        // Disable the collision box after the enemy is dead
+        EnableAttackCollisionBox(false);
+        
     }
     else
     {
-        // Stun the enemy
-        Stun(StunDuration);
-        
         // Play the takehit animation by jumpting to the JumpTakeHit animation
         GetAnimInstance()->JumpToNode(FName("JumpTakeHit"), FName("CrabbyStateMachine"));
     }
@@ -167,12 +189,77 @@ void AEnemy::Stun(float DurationInSeconds)
     
     GetWorldTimerManager().SetTimer(StunTimer, this, &AEnemy::OnStunTimerTimeout, 1.0f, false, DurationInSeconds);
     
-    // Make sure we don't switch to any other animation while stunned
+    // Make sure we stop any currently playing override animations while stunned (such as attack)
     GetAnimInstance()->StopAllAnimationOverrides();
+    
+    // Disable the collision box
+    EnableAttackCollisionBox(false);
 }
 
 void AEnemy::OnStunTimerTimeout()
 {
     IsStunned = false;
     
+}
+
+void AEnemy::Attack()
+{
+    if (IsAlive && CanAttack && !IsStunned)
+    {
+        CanAttack = false;
+        CanMove = false;
+        
+        // Override the current animation sequence with AttackAnimSequence when the enemy is attacking
+        // Once the animation is over, the OnAttackOverrideEndDelegate will be actioned and OnAttackOverrideAnimEnd will be called
+        // We allow the enemy to move when the attack animation ends
+        GetAnimInstance()->PlayAnimationOverride(AttackAnimSequence, FName("DefaultSlot"), 1.0f, 0.0f, OnAttackOverrideEndDelegate);
+        
+        // We dont want the enemy to attack as soon as hes done attacking, we want the enemy to attack after the cool down
+        GetWorldTimerManager().SetTimer(AttackCoolDownTimer, this, &AEnemy::OnAttackCoolDownTimerTimeout, 1.0f, false, AttackCoolDownInSeconds);
+    }
+}
+
+void AEnemy::OnAttackCoolDownTimerTimeout()
+{
+   if (IsAlive)
+   {
+       CanAttack = true;
+   }
+}
+
+void AEnemy::OnAttackOverrideAnimEnd(bool Completed)
+{
+    if (IsAlive)
+    {
+        CanMove = true;
+    }
+}
+
+void AEnemy::AttackBoxOverlapBegin(UPrimitiveComponent* OverlapComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    // Check if the object entering the collision box is the player
+    APlayerCharacter* Player = Cast<APlayerCharacter>(OtherActor);
+    
+    if (Player)
+    {
+        Player->TakeHit(AttackDamage, AttackStunDuration);
+    }
+}
+
+void AEnemy::EnableAttackCollisionBox(bool Enabled)
+{
+    if (Enabled)
+    {
+        // Enable the collision box
+        AttackCollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        // Setting the collision response to the pawn to be overalp
+        AttackCollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+    }
+    else
+    {
+        // Disable the collision box
+        AttackCollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        // Setting the collision response to the pawn to be ignore
+        AttackCollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+    }
 }

@@ -74,7 +74,7 @@ void APlayerCharacter::Move(const FInputActionValue& Value)
     // Direction of player ("D" key --> +1, "S" key --> -1)
     float MoveActionValue = Value.Get<float>();
     
-    if (IsAlive && CanMove)
+    if (IsAlive && CanMove && !IsStunned)
     {
         FVector Direction = FVector(1.0f, 0.0f, 0.0f);
         AddMovementInput(Direction, MoveActionValue);
@@ -110,7 +110,7 @@ void APlayerCharacter::UpdateDirection(float MoveDirection)
 
 void APlayerCharacter::JumpStarted(const FInputActionValue& Value)
 {
-    if (IsAlive && CanMove)
+    if (IsAlive && CanMove && !IsStunned)
     {
         Jump();
     }
@@ -123,7 +123,7 @@ void APlayerCharacter::JumpEnded(const FInputActionValue& Value)
 
 void APlayerCharacter::Attack(const FInputActionValue& Value)
 {
-    if (IsAlive && CanAttack)
+    if (IsAlive && CanAttack && !IsStunned)
     {
         CanAttack = false;
         CanMove = false;
@@ -175,4 +175,68 @@ void APlayerCharacter::EnableAttackCollisionBox(bool Enabled)
         // Setting the collision response to the pawn to be ignore
         AttackCollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
     }
+}
+
+void APlayerCharacter::TakeHit(int DamageAmount, float StunDuration)
+{
+    if (!IsAlive) return;
+    
+    Stun(StunDuration);
+    
+    UpdateHP(HitPoints - DamageAmount);
+    
+    if (HitPoints <= 0)
+    {
+        // Player is dead
+        UpdateHP(0);
+        
+        IsAlive = false;
+        CanMove = false;
+        CanAttack = false;
+        
+        // Play the player dead animation
+        GetAnimInstance()->JumpToNode(FName("JumpDie"), FName("CaptainStateMachine"));
+        
+        // Disable the attack collision box
+        EnableAttackCollisionBox(false);
+    }
+    else
+    {
+        // Player is still alive
+        // Play the player take hit animation
+        GetAnimInstance()->JumpToNode(FName("JumpTakeHit"), FName("CaptainStateMachine"));
+    }
+    
+    
+}
+
+void APlayerCharacter::UpdateHP(int NewHP)
+{
+    HitPoints = NewHP;
+}
+
+void APlayerCharacter::Stun(float DurationInSeconds)
+{
+    IsStunned = true;
+    
+    // Allow the player to stun the enemy several times
+    bool IsTimerAlreadyActive = GetWorldTimerManager().IsTimerActive(StunTimer);
+    if (IsTimerAlreadyActive)
+    {
+        GetWorldTimerManager().ClearTimer(StunTimer);
+    }
+    
+    GetWorldTimerManager().SetTimer(StunTimer, this, &APlayerCharacter::OnStunTimerTimeout, 1.0f, false, DurationInSeconds);
+    
+    // Make sure we stop any currently playing override animations while stunned (such as attack)
+    GetAnimInstance()->StopAllAnimationOverrides();
+    
+    // Disable the collision box
+    EnableAttackCollisionBox(false);
+}
+
+void APlayerCharacter::OnStunTimerTimeout()
+{
+    IsStunned = false;
+    
 }
