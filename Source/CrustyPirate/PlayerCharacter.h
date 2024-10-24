@@ -20,6 +20,8 @@
 
 #include "Engine/TimerHandle.h"
 
+#include "PlayerHUD.h"
+
 #include "PlayerCharacter.generated.h"
 
 /**
@@ -55,6 +57,12 @@ public:
     
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     UPaperZDAnimSequence* AttackAnimSequence;
+    
+    UPROPERTY(EditAnywhere)
+    TSubclassOf<UPlayerHUD> PlayerHUDClass;
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+    UPlayerHUD* PlayerHUDWidget;
     
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     bool IsAlive = true;

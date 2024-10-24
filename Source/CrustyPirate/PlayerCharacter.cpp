@@ -5,6 +5,8 @@
 
 #include "Enemy.h"
 
+#include "Kismet/GameplayStatics.h"
+
 APlayerCharacter::APlayerCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
@@ -42,6 +44,25 @@ void APlayerCharacter::BeginPlay()
     
     // Disbale the collision box at first
     EnableAttackCollisionBox(false);
+    
+    // Create the HUD Widget
+    if (PlayerHUDClass)
+    {
+        // Create a widget of class PlayerHUDClass
+        PlayerHUDWidget = CreateWidget<UPlayerHUD>(UGameplayStatics::GetPlayerController(GetWorld(), 0), PlayerHUDClass);
+        
+        if (PlayerHUDWidget)
+        {
+            // Add the widget to the game
+            PlayerHUDWidget->AddToPlayerScreen();
+            
+            // Set the widget texts
+            PlayerHUDWidget->SetHP(HitPoints);
+            PlayerHUDWidget->SetDiamond(50);
+            PlayerHUDWidget->SetLevel(1);
+            
+        }
+    }
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
@@ -213,6 +234,9 @@ void APlayerCharacter::TakeHit(int DamageAmount, float StunDuration)
 void APlayerCharacter::UpdateHP(int NewHP)
 {
     HitPoints = NewHP;
+    
+    // Update the HUD Widget HP text
+    PlayerHUDWidget->SetHP(HitPoints);
 }
 
 void APlayerCharacter::Stun(float DurationInSeconds)
