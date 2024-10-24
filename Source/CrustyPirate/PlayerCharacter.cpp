@@ -129,7 +129,7 @@ void APlayerCharacter::Attack(const FInputActionValue& Value)
         CanMove = false;
         
         // Enable the collision box
-        EnableAttackCollisionBox(true);
+        //EnableAttackCollisionBox(true);
         
         // Override the current animation sequence with AttackAnimSequence when the player is attacking
         // Once the animation is over, the OnAttackOverrideEndDelegate will be actioned and OnAttackOverrideAnimEnd will be called
@@ -143,7 +143,7 @@ void APlayerCharacter::OnAttackOverrideAnimEnd(bool Completed)
     CanMove = true;
     
     // Disable the collision box
-    EnableAttackCollisionBox(false);
+    //EnableAttackCollisionBox(false);
 }
 
 void APlayerCharacter::AttackBoxOverlapBegin(UPrimitiveComponent* OverlapComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -153,8 +153,7 @@ void APlayerCharacter::AttackBoxOverlapBegin(UPrimitiveComponent* OverlapCompone
     
     if (Enemy)
     {
-        // Enemy->TakeDamage();
-        GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::White, Enemy->GetName());
+        Enemy->TakeHit(AttackDamage, AttackStunDuration);
     }
     
     

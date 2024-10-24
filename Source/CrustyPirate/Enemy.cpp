@@ -11,6 +11,9 @@ AEnemy::AEnemy()
     PlayerDetectorSphere = CreateDefaultSubobject<USphereComponent>(TEXT("PlayerDetectorSphere"));
     // Note that the RootComponent is already set up for us since we inherit from APaperZDCharacter
     PlayerDetectorSphere->SetupAttachment(RootComponent);
+    
+    HPText = CreateDefaultSubobject<UTextRenderComponent>(TEXT("HPText"));
+    HPText->SetupAttachment(RootComponent);
 }
 
 void AEnemy::BeginPlay()
@@ -20,6 +23,8 @@ void AEnemy::BeginPlay()
     // Bind the delegates to the Sphere's events
     PlayerDetectorSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::DetectorOverlapBegin);
     PlayerDetectorSphere->OnComponentEndOverlap.AddDynamic(this, &AEnemy::DetectorOverlapEnd);
+    
+    UpdateHP(HitPoints);
 }
 
 void AEnemy::Tick(float DeltaTime)
@@ -27,7 +32,7 @@ void AEnemy::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
     
     // If the enemy is alive and has a follow target assigned, follow the player
-    if (IsAlive && FollowTarget)
+    if (IsAlive && FollowTarget && !IsStunned)
     {
         // Get the direction of the enemy relative to the player
         float MoveDirection = (FollowTarget->GetActorLocation().X - GetActorLocation().X) > 0.0f ? 1.0f : -1.0f;
@@ -111,4 +116,63 @@ bool AEnemy::ShouldMoveToTarget()
     }
     
     return Result;
+}
+
+void AEnemy::UpdateHP(int NewHP)
+{
+    // Update Hit Points
+    HitPoints = NewHP;
+    // Update the Hit Points string (displayed above the enemy)
+    FString Str = FString::Printf(TEXT("HP: %d"), HitPoints);
+    HPText->SetText(FText::FromString(Str));
+}
+
+void AEnemy::TakeHit(int DamageAmount, float StunDuration)
+{
+    if (!IsAlive) return;
+    
+    UpdateHP(HitPoints - DamageAmount);
+    
+    if (HitPoints <= 0)
+    {
+        // Enemy is dead
+        UpdateHP(0);
+        HPText->SetHiddenInGame(true);
+        IsAlive = false;
+        CanMove = false;
+        
+        // Play the die animation by jumpting to the JumpDie animation
+        GetAnimInstance()->JumpToNode(FName("JumpDie"), FName("CrabbyStateMachine"));
+    }
+    else
+    {
+        // Stun the enemy
+        Stun(StunDuration);
+        
+        // Play the takehit animation by jumpting to the JumpTakeHit animation
+        GetAnimInstance()->JumpToNode(FName("JumpTakeHit"), FName("CrabbyStateMachine"));
+    }
+}
+
+void AEnemy::Stun(float DurationInSeconds)
+{
+    IsStunned = true;
+    
+    // Allow the player to stun the enemy several times
+    bool IsTimerAlreadyActive = GetWorldTimerManager().IsTimerActive(StunTimer);
+    if (IsTimerAlreadyActive)
+    {
+        GetWorldTimerManager().ClearTimer(StunTimer);
+    }
+    
+    GetWorldTimerManager().SetTimer(StunTimer, this, &AEnemy::OnStunTimerTimeout, 1.0f, false, DurationInSeconds);
+    
+    // Make sure we don't switch to any other animation while stunned
+    GetAnimInstance()->StopAllAnimationOverrides();
+}
+
+void AEnemy::OnStunTimerTimeout()
+{
+    IsStunned = false;
+    
 }
