@@ -45,6 +45,18 @@ void APlayerCharacter::BeginPlay()
     // Disbale the collision box at first
     EnableAttackCollisionBox(false);
     
+    // Get the game instance
+    MyGameInstance = Cast<UCrustyPirateGameInstance>(GetGameInstance());
+    if (MyGameInstance)
+    {
+        // Set the HitPoints and the Double Jump
+        HitPoints = MyGameInstance->PlayerHP;
+        if (MyGameInstance->IsDoubleJumpUnlocked)
+        {
+            UnlockDoubleJump();
+        }
+    }
+    
     // Create the HUD Widget
     if (PlayerHUDClass)
     {
@@ -58,7 +70,7 @@ void APlayerCharacter::BeginPlay()
             
             // Set the widget texts
             PlayerHUDWidget->SetHP(HitPoints);
-            PlayerHUDWidget->SetDiamond(50);
+            PlayerHUDWidget->SetDiamond(MyGameInstance->CollectedDiamondCount);
             PlayerHUDWidget->SetLevel(1);
             
         }
@@ -235,8 +247,12 @@ void APlayerCharacter::UpdateHP(int NewHP)
 {
     HitPoints = NewHP;
     
+    // Update the game instance with this new value
+    MyGameInstance->SetPlayerHP(HitPoints);
+    
     // Update the HUD Widget HP text
     PlayerHUDWidget->SetHP(HitPoints);
+    
 }
 
 void APlayerCharacter::Stun(float DurationInSeconds)
@@ -263,4 +279,51 @@ void APlayerCharacter::OnStunTimerTimeout()
 {
     IsStunned = false;
     
+}
+
+void APlayerCharacter::CollectItem(CollectableType ItemType)
+{
+    // Play sound
+    UGameplayStatics::PlaySound2D(GetWorld(), ItemPickupSound);
+    
+    switch (ItemType)
+    {
+        case CollectableType::HealthPotion:
+        {
+            // Increase hit points by 25
+            UpdateHP(HitPoints + 25);
+        }break;
+            
+        case CollectableType::Diamond:
+        {
+            // Add one to diamond count
+            MyGameInstance->AddDiamond(1);
+            // Update th HUD
+            PlayerHUDWidget->SetDiamond(MyGameInstance->CollectedDiamondCount);
+        }break;
+            
+            
+        case CollectableType::DoubleJumpUpgrade:
+        {
+            if (!MyGameInstance->IsDoubleJumpUnlocked)
+            {
+                // Let the game instance remember this
+                MyGameInstance->IsDoubleJumpUnlocked = true;
+                
+                UnlockDoubleJump();
+            }
+            
+        }break;
+            
+        default:
+        {
+            
+        }break;
+    }
+}
+
+void APlayerCharacter::UnlockDoubleJump()
+{
+    // Allow double jump by setting the built-in variable JumpMaxCount to 2
+    JumpMaxCount = 2;
 }
