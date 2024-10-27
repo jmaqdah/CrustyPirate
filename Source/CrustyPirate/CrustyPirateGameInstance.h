@@ -25,8 +25,14 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
     bool IsDoubleJumpUnlocked = false;
     
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+    int CurrentLevelIndex = 1;
+    
     void SetPlayerHP(int NewHP);
     void AddDiamond(int Amount);
+    
+    void ChangeLevel(int LevelIndex);
+    void RestartGame();
     
 	
 };

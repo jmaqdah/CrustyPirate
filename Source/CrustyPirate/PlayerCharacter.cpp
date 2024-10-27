@@ -7,6 +7,8 @@
 
 #include "Kismet/GameplayStatics.h"
 
+#include "GameFramework/CharacterMovementComponent.h"
+
 APlayerCharacter::APlayerCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
@@ -71,7 +73,7 @@ void APlayerCharacter::BeginPlay()
             // Set the widget texts
             PlayerHUDWidget->SetHP(HitPoints);
             PlayerHUDWidget->SetDiamond(MyGameInstance->CollectedDiamondCount);
-            PlayerHUDWidget->SetLevel(1);
+            PlayerHUDWidget->SetLevel(MyGameInstance->CurrentLevelIndex);
             
         }
     }
@@ -172,11 +174,11 @@ void APlayerCharacter::Attack(const FInputActionValue& Value)
 
 void APlayerCharacter::OnAttackOverrideAnimEnd(bool Completed)
 {
-    CanAttack = true;
-    CanMove = true;
-    
-    // Disable the collision box
-    //EnableAttackCollisionBox(false);
+    if (IsAlive && IsActive)
+    {
+        CanAttack = true;
+        CanMove = true;
+    }
 }
 
 void APlayerCharacter::AttackBoxOverlapBegin(UPrimitiveComponent* OverlapComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -213,6 +215,7 @@ void APlayerCharacter::EnableAttackCollisionBox(bool Enabled)
 void APlayerCharacter::TakeHit(int DamageAmount, float StunDuration)
 {
     if (!IsAlive) return;
+    if (!IsActive) return;
     
     Stun(StunDuration);
     
@@ -232,6 +235,10 @@ void APlayerCharacter::TakeHit(int DamageAmount, float StunDuration)
         
         // Disable the attack collision box
         EnableAttackCollisionBox(false);
+        
+        // Restart the game
+        float RestartDelay = 3.0f;
+        GetWorldTimerManager().SetTimer(RestartTimer, this, &APlayerCharacter::OnRestartTimerTimeout, 1.0f, false, RestartDelay);
     }
     else
     {
@@ -326,4 +333,24 @@ void APlayerCharacter::UnlockDoubleJump()
 {
     // Allow double jump by setting the built-in variable JumpMaxCount to 2
     JumpMaxCount = 2;
+}
+
+
+void APlayerCharacter::OnRestartTimerTimeout()
+{
+    MyGameInstance->RestartGame();
+}
+
+void APlayerCharacter::Deactivate()
+{
+    if (IsActive)
+    {
+        IsActive = false;
+        CanAttack = false;
+        CanMove = false;
+        
+        // Get the chcarcter movement component to immediately stop the character (incase the player was jumping)
+        GetCharacterMovement()->StopMovementImmediately();
+        
+    }
 }

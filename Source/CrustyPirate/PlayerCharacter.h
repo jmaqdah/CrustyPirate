@@ -78,6 +78,9 @@ public:
     bool IsAlive = true;
     
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    bool IsActive = true;
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     bool IsStunned = false;
     
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -98,6 +101,7 @@ public:
     FZDOnAnimationOverrideEndSignature OnAttackOverrideEndDelegate;
     
     FTimerHandle StunTimer;
+    FTimerHandle RestartTimer;
     
     APlayerCharacter();
     virtual void BeginPlay() override;
@@ -129,4 +133,7 @@ public:
     void CollectItem(CollectableType ItemType);
     void UnlockDoubleJump();
 	
+    void OnRestartTimerTimeout();
+    
+    void Deactivate();
 };
