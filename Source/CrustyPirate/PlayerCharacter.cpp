@@ -101,6 +101,8 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
         
         EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &APlayerCharacter::Attack);
         
+        EnhancedInputComponent->BindAction(QuitAction, ETriggerEvent::Started, this, &APlayerCharacter::QuitGame);
+        
     }
 }
 
@@ -353,4 +355,9 @@ void APlayerCharacter::Deactivate()
         GetCharacterMovement()->StopMovementImmediately();
         
     }
+}
+
+void APlayerCharacter::QuitGame()
+{
+    UKismetSystemLibrary::QuitGame(GetWorld(), UGameplayStatics::GetPlayerController(GetWorld(), 0), EQuitPreference::Quit, false);
 }
